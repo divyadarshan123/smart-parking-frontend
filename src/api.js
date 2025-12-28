@@ -1,19 +1,20 @@
-const BASE_URL = "http://localhost:5000";
+const BASE_URL = "https://smart-parking-backend-hq3g.onrender.com";
 
 export const api = async (path, options = {}) => {
   try {
     const res = await fetch(`${BASE_URL}${path}`, {
+      method: options.method || "GET",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": "smart-parking-secret", // SAME as backend .env
-        ...(options.headers || {})
+        "x-api-key": "smart-parking-secret", 
       },
-      ...options,
+      body: options.body,
     });
 
     return await res.json();
   } catch (err) {
-    console.error("API FETCH ERROR 👉", err);
+    console.error("API ERROR:", err);
     throw err;
   }
 };
+

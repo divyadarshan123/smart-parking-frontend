@@ -3,210 +3,142 @@ import { api } from "./api";
 import "./App.css";
 
 function App() {
-  const [phone, setPhone] = useState("");
-  const [user, setUser] = useState(null);
-  const [error, setError] = useState("");
+  // 🔁 ROLE SWITCH (NO LOGIN)
+  const [role, setRole] = useState("user");
 
+  // 🔹 FIXED USERS (DB IDs se match hone chahiye)
+  const USERS = {
+    user: {
+      id: "1605d5f3-6d96-41de-ad38-a376082dd374",
+      name: "Divya Darshan",
+      role: "user",
+    },
+    manager: {
+      id: "a9ef0a6b-1427-4b69-a4d2-f3f224e483d2",
+      name: "Udit",
+      role: "manager",
+    },
+    driver: {
+      id: "7426cfbe-a751-43af-8250-cc5bda3639a4",
+      name: "Rohit Kumar",
+      role: "driver",
+    },
+    admin: {
+      id: "ad7266fc-207c-435d-9ba9-7bb6ef9912a2",
+      name: "Kamal",
+      role: "admin",
+    },
+  };
+
+  const user = USERS[role];
+
+  // 📦 STATES
   const [recent, setRecent] = useState([]);
-  const [history, setHistory] = useState([]);
-  const [showHistory, setShowHistory] = useState(false);
-
   const [stats, setStats] = useState(null);
   const [driverBooking, setDriverBooking] = useState(null);
 
-  // 🔐 LOGIN
-  const handleLogin = async () => {
-    try {
-      const res = await api("/login", {
-        method: "POST",
-        body: JSON.stringify({ phone }),
+  // 👤 USER – RECENT PARKING
+  useEffect(() => {
+    if (role === "user") {
+      api(`/bookings/recent/${user.id}`).then((res) => {
+        if (res.success) setRecent(res.data);
       });
-
-      if (!res.success) {
-        setError(res.error);
-        return;
-      }
-
-      setUser(res.user);
-      setError("");
-    } catch {
-      setError("Backend not reachable");
     }
-  };
+  }, [role]);
 
-  // 📦 USER RECENT BOOKINGS
+  // 👔 MANAGER – STATS
   useEffect(() => {
-    if (user && user.role === "user") {
-      api(`/bookings/recent/${user.id}`)
-        .then((res) => {
-          if (res.success) setRecent(res.data);
-        })
-        .catch(() => {});
+    if (role === "manager") {
+      api(`/manager/stats/${user.id}`).then((res) => {
+        if (res.success) setStats(res.data);
+      });
     }
-  }, [user]);
+  }, [role]);
 
-  // 📜 USER BOOKING HISTORY
-  const loadHistory = async () => {
-    try {
-      const res = await api(`/bookings/history/${user.id}`);
-      if (res.success) {
-        setHistory(res.data);
-        setShowHistory(true);
-      }
-    } catch (err) {
-      console.log("History error", err);
-    }
-  };
-
-  // 📊 MANAGER STATS
-  const loadManagerStats = async () => {
-    try {
-      const res = await api(`/manager/stats/${user.id}`);
-      if (res.success) setStats(res.data);
-    } catch (err) {
-      console.log("Manager stats error", err);
-    }
-  };
-
+  // 🚗 DRIVER – CURRENT ASSIGNMENT (AUTO REFRESH)
   useEffect(() => {
-    if (user && user.role === "manager") {
-      loadManagerStats();
+    if (role === "driver") {
+      const load = () => {
+        api(`/driver/current/${user.id}`).then((res) => {
+          if (res.success) setDriverBooking(res.data);
+        });
+      };
+      load();
+      const i = setInterval(load, 5000);
+      return () => clearInterval(i);
     }
-  }, [user]);
+  }, [role]);
 
-  // 🚗 DRIVER CURRENT BOOKING
-  const loadDriverCurrent = async () => {
-    try {
-      const res = await api(`/driver/current/${user.id}`);
-      if (res.success) setDriverBooking(res.data);
-    } catch (err) {
-      console.log("Driver current error", err);
-    }
+  const startParking = async (id) => {
+    await api(`/driver/start-parking/${id}`, { method: "POST" });
   };
 
-  useEffect(() => {
-    if (user && user.role === "driver") {
-      loadDriverCurrent();
-    }
-  }, [user]);
-
-  useEffect(() => {
-  if (user && user.role === "driver") {
-    loadDriverCurrent();
-
-    const interval = setInterval(() => {
-      loadDriverCurrent();
-    }, 5000); // har 5 second
-
-    return () => clearInterval(interval);
-  }
-}, [user]);
-
-
-  const startParking = async (bookingId) => {
-    await api(`/driver/start-parking/${bookingId}`, { method: "POST" });
-    loadDriverCurrent();
+  const retrieveVehicle = async (id) => {
+    await api(`/driver/retrieve/${id}`, { method: "POST" });
   };
 
-  const retrieveVehicle = async (bookingId) => {
-    await api(`/driver/retrieve/${bookingId}`, { method: "POST" });
-    loadDriverCurrent();
-  };
-
-  // 🔹 LOGIN SCREEN
-  if (!user) {
-    return (
-      <div className="container">
-        <div className="card">
-          <h2 className="title">Smart Parking Login</h2>
-
-          <input
-            className="input"
-            placeholder="Enter phone number"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
-
-          <button className="btn" onClick={handleLogin}>
-            Login
-          </button>
-
-          {error && <p className="error">{error}</p>}
-        </div>
-      </div>
-    );
-  }
-
-  // 🔹 DASHBOARD
   return (
-    <div className="container">
-      <div className="card">
-        <h2>Welcome {user.name}</h2>
-        <p className="role">Role: {user.role}</p>
+    <div className="app">
+      {/* 🔷 HEADER */}
+      <div className="header">
+        <h2>Smart Parking</h2>
+        <p>Welcome back, {user.name}</p>
       </div>
 
       {/* 👤 USER DASHBOARD */}
-      {user.role === "user" && (
-        <div className="card">
-          <h3 className="section-title">Recent Bookings</h3>
+      {role === "user" && (
+        <>
+          <div className="scan-card">
+            <div className="scan-icon">🔳</div>
+            <div>
+              <h3>Scan to Park</h3>
+              <p>Scan QR code at parking entrance</p>
+            </div>
+          </div>
 
-          {recent.length === 0 && <p>No bookings yet</p>}
+          <h3 className="section-title">Recent Parking</h3>
 
-          <ul className="list">
-            {recent.map((b) => (
-              <li key={b.id}>
-                <b>{b.status}</b><br />
-                {new Date(b.start_time).toLocaleString()}
-              </li>
-            ))}
-          </ul>
-
-          <button className="btn" onClick={loadHistory}>
-            View Full History
-          </button>
-
-          {showHistory && (
-            <>
-              <h3 className="section-title">Booking History</h3>
-              <ul className="list">
-                {history.map((b) => (
-                  <li key={b.id}>
-                    {b.status}<br />
-                    {new Date(b.start_time).toLocaleString()}
-                  </li>
-                ))}
-              </ul>
-            </>
+          {recent.length === 0 && (
+            <p style={{ opacity: 0.6 }}>No recent parking</p>
           )}
-        </div>
+
+          {recent.map((b) => (
+            <div className="booking-card" key={b.id}>
+              <div className="row">
+                <b>{b.location_name || "Parking Location"}</b>
+                <span className="status">{b.status}</span>
+              </div>
+              <p className="small">
+                {new Date(b.start_time).toLocaleString()}
+              </p>
+            </div>
+          ))}
+        </>
       )}
 
       {/* 👔 MANAGER DASHBOARD */}
-      {user.role === "manager" && stats && (
-  <div className="card">
-    <h3 className="section-title">Manager Dashboard</h3>
-
-    <div className="stats-grid">
-      <div className="stat-box">
-        <p>Total Bookings</p>
-        <h2>{stats.total_bookings}</h2>
-      </div>
-
-      <div className="stat-box">
-        <p>Total Revenue</p>
-        <h2>₹{stats.total_revenue || 0}</h2>
-      </div>
-    </div>
-  </div>
-)}
-
+      {role === "manager" && stats && (
+        <div className="card">
+          <h3>Manager Dashboard</h3>
+          <div className="stats-grid">
+            <div className="stat-box">
+              <p>Total Bookings</p>
+              <h2>{stats.total_bookings}</h2>
+            </div>
+            <div className="stat-box">
+              <p>Total Revenue</p>
+              <h2>₹{stats.total_revenue || 0}</h2>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 🚗 DRIVER DASHBOARD */}
-      {user.role === "driver" && (
+      {role === "driver" && (
         <div className="card">
-          <h3 className="section-title">Driver Assignment</h3>
+          <h3>Driver Console</h3>
 
-          {!driverBooking && <p>No active booking assigned</p>}
+          {!driverBooking && <p>No assignment</p>}
 
           {driverBooking && (
             <>
@@ -217,19 +149,13 @@ function App() {
               <p><b>Status:</b> {driverBooking.status}</p>
 
               {driverBooking.status === "active" && (
-                <button
-                  className="btn secondary"
-                  onClick={() => startParking(driverBooking.id)}
-                >
+                <button onClick={() => startParking(driverBooking.id)}>
                   Start Parking
                 </button>
               )}
 
               {driverBooking.status === "parked" && (
-                <button
-                  className="btn danger"
-                  onClick={() => retrieveVehicle(driverBooking.id)}
-                >
+                <button onClick={() => retrieveVehicle(driverBooking.id)}>
                   Retrieve Vehicle
                 </button>
               )}
@@ -237,9 +163,16 @@ function App() {
           )}
         </div>
       )}
+
+      {/* 🔁 ROLE SWITCHER */}
+      <div className="role-switch">
+        <button onClick={() => setRole("user")}>User</button>
+        <button onClick={() => setRole("manager")}>Manager</button>
+        <button onClick={() => setRole("driver")}>Driver</button>
+        <button onClick={() => setRole("admin")}>Super Admin</button>
+      </div>
     </div>
   );
 }
 
 export default App;
-
