@@ -1,14 +1,18 @@
 import { useState } from "react";
+
 import UserHome from "./screens/user/UserHome";
 import DriverConsole from "./screens/driver/DriverConsole";
 import ManagerDashboard from "./screens/manager/ManagerDashboard";
 import SuperAdmin from "./screens/admin/SuperAdmin";
+
 import RoleSwitch from "./components/RoleSwitch";
 import "./App.css";
 
 function App() {
+  // 🔁 ROLE SWITCH (demo / testing purpose)
   const [role, setRole] = useState("user");
 
+  // 👤 FIXED USERS (DB ke UUID se match)
   const USERS = {
     user: {
       id: "1605d5f3-6d96-41de-ad38-a376082dd374",
@@ -36,10 +40,10 @@ function App() {
 
   return (
     <>
-      {/* ROLE SWITCH BAR (demo purpose) */}
+      {/* 🔁 ROLE SWITCH (sirf demo ke liye) */}
       <RoleSwitch role={role} setRole={setRole} />
 
-      {/* ROLE BASED SCREENS */}
+      {/* 🧠 ROLE BASED SCREENS */}
       {role === "user" && <UserHome user={currentUser} />}
 
       {role === "driver" && (
