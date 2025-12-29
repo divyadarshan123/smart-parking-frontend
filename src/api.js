@@ -1,4 +1,4 @@
-const BASE_URL = "https://smart-parking-backend-hq3g.onrender.com";
+const BASE_URL = "https://smart-parking-backend-igun.onrender.com/";
 
 export const api = async (path, options = {}) => {
   try {
